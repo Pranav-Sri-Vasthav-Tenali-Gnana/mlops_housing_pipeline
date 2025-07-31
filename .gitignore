@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env/
+venv/
+.env
+
+g24ai1114_env/
