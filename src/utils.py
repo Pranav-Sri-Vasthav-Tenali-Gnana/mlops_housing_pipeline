@@ -20,7 +20,8 @@ def evaluate_model(model, X, y):
     mse = mean_squared_error(y, preds)
     return r2, mse
 
-def save_model(model, filepath=None):
-    if filepath is None:
-        filepath = os.path.join(os.path.dirname(__file__), "model.joblib")
+def save_model(model, filename="model.joblib"):
+    models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
+    os.makedirs(models_dir, exist_ok=True)
+    filepath = os.path.join(models_dir, filename)
     joblib.dump(model, filepath)
