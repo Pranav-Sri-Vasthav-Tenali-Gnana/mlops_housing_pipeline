@@ -1,5 +1,6 @@
 # src/utils.py
 
+import numpy as np
 from sklearn.datasets import fetch_california_housing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_squared_error
@@ -25,3 +26,6 @@ def save_model(model, filename="model.joblib"):
     os.makedirs(models_dir, exist_ok=True)
     filepath = os.path.join(models_dir, filename)
     joblib.dump(model, filepath)
+
+def dequantize(array, scale):
+    return array.astype(np.float32) * scale
