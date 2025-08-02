@@ -57,10 +57,11 @@ mlops\_housing\_pipeline/
 
 ## Comparison Table
 
-| Metric   | Original Model | Quantized Model (Dequantized) |
-| -------- | -------------- | ----------------------------- |
-| R² Score |  0.6062        | 0.1328                        |
-| MSE      |  0.5243        | 1.1548                        |
+| Metric   | Original Model | Quantized Model |
+| -------- | -------------- | --------------- |
+| R² Score |  0.6062        | 0.1328          |
+| MSE      |  0.5243        | 1.1548          |
+| SIZE     |  697 bytes     | 349 bytes       |
 
 > Note: Quantized model uses manual 8-bit quantization, which slightly reduces performance but enables lightweight deployment.
 
