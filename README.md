@@ -1,88 +1,67 @@
-# MLOps Pipeline – California Housing Price Prediction
+# MLOps Pipeline: California Housing Price Prediction
 
-This project demonstrates a complete MLOps workflow using scikit-learn's Linear Regression model on the California Housing dataset. It includes modular code, model training, manual quantization, containerization using Docker, and CI/CD with GitHub Actions.
+An end-to-end MLOps workflow around a scikit-learn Linear Regression model on the California Housing dataset: modular training code, manual `uint8` quantization, unit tests, a Docker image for inference, and a GitHub Actions CI/CD pipeline that runs on every push.
 
-## Project Features
+**Stack:** Python · scikit-learn · NumPy · joblib · pytest · Docker · GitHub Actions
 
-- Clean, modular Python code using `utils.py`
-- Linear Regression as the only model, per assignment constraints
-- Manual model quantization (to uint8) and dequantization
-- Unit testing using Pytest
+## Features
+
+- Modular code: shared helpers in `src/utils.py`, separate train / quantize / predict scripts
+- Linear Regression as the only model (assignment constraint)
+- Manual quantization of coefficients and intercept to `uint8`, plus dequantization for inference
+- Unit tests with pytest
 - Dockerized prediction pipeline
-- Automated CI/CD pipeline using GitHub Actions
+- CI/CD with GitHub Actions: test → train → quantize → build the Docker image → run inference
 
-## Directory Structure
+## Repository layout
 
 ```
+mlops_housing_pipeline/
+├── models/                  # trained model + quantized / unquantized parameters
+├── src/
+│   ├── train.py             # train and save the Linear Regression model
+│   ├── quantize.py          # uint8 quantization, dequantization and evaluation
+│   ├── predict.py           # inference (used inside the Docker image)
+│   └── utils.py             # data loading and shared helpers
+├── tests/test_train.py      # pytest unit tests
+├── .github/workflows/ci.yml # CI/CD pipeline
+├── Dockerfile
+└── requirements.txt
+```
 
-mlops\_housing\_pipeline/
-├── models/                  # Saved models and parameter files
-├── src/                     # Source code: training, utils, quantize, predict
-├── tests/                   # Unit tests using pytest
-├── .github/workflows/       # GitHub Actions CI/CD workflow
-├── Dockerfile               # Docker image setup
-├── requirements.txt         # Project dependencies
-└── README.md                # Project documentation
+## Run it
 
-````
+```bash
+python -m venv venv
+source venv/bin/activate            # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 
-## Setup Instructions
+python src/train.py                 # train and save the model
+python src/quantize.py              # quantize parameters and compare
+PYTHONPATH=src pytest tests/        # run unit tests
 
-1. **Create and activate a virtual environment**
+docker build -t mlops-housing .
+docker run mlops-housing            # run inference in the container
+```
 
-   conda create --name g24ai1114_env python=3.10 -y
-   conda activate g24ai1114_env
+## Results: original vs quantized
 
+| Metric   | Original model | Quantized model (`uint8`) |
+|----------|----------------|---------------------------|
+| R²       | 0.6062         | 0.1328                    |
+| MSE      | 0.5243         | 1.1548                    |
+| Size     | 697 bytes      | 349 bytes                 |
 
-2. **Install dependencies**
+Quantization halves the parameter size, but costs a lot of accuracy here. The reason is a design constraint worth knowing about:
 
-   pip install -r requirements.txt
+`uint8` can only hold values from 0 to 255, so the quantizer clips every **negative** coefficient of the regression to 0. Several California Housing features have negative weights, so the quantized model loses their contribution entirely, and R² drops from 0.61 to 0.13.
 
-3. **Run the training pipeline**
-
-   python src/train.py
-
-4. **Quantize the model**
-
-   python src/quantize.py
-
-5. **Test the setup**
-
-   pytest tests/
-
-6. **Build and run the Docker container**
-
-   docker build -t mlops-housing .
-   docker run mlops-housing
-
-## Comparison Table
-
-| Metric   | Original Model | Quantized Model |
-| -------- | -------------- | --------------- |
-| R² Score |  0.6062        | 0.1328          |
-| MSE      |  0.5243        | 1.1548          |
-| SIZE     |  697 bytes     | 349 bytes       |
-
-> Note: Quantized model uses manual 8-bit quantization, which slightly reduces performance but enables lightweight deployment.
+**How I would fix it outside the assignment constraints:** use signed `int8`, or keep `uint8` with an asymmetric scheme (a per-tensor scale and zero-point, as in PyTorch and ONNX Runtime quantization) so negative values map into the 0–255 range instead of being clipped. My [ALLM-1](https://github.com/Pranav-Sri-Vasthav-Tenali-Gnana/ALLM-1) project uses exactly that approach for transformer models and keeps accuracy within 0.1 points.
 
 ## CI/CD
 
-The pipeline runs on every push to the `main` branch. It performs:
+`.github/workflows/ci.yml` runs on every push to `main`:
 
-* Unit testing with pytest
-* Model training and quantization
-* Docker image build and inference
-
-## Performance Note
-
-```markdown
-## Notes on Quantization Performance
-
-The assignment requires manual quantization using `uint8`, which restricts all values to the range [0, 255]. As a result, any **negative weights learned by the Linear Regression model are clipped to 0 or distorted** during quantization.
-
-This significantly reduces the expressiveness of the model, leading to a noticeable drop in performance when compared to the original (floating-point) model:
-
-- R² Score dropped from ~0.6062 to 0.1328
-- MSE increased from ~0.5243 to 1.1548
-
-This behavior is expected due to the limitations of unsigned 8-bit quantization and helps illustrate the trade-offs between model precision and deployment efficiency.
+1. Unit tests with pytest
+2. Model training and quantization
+3. Docker image build and a containerised inference run
